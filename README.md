@@ -55,3 +55,26 @@ Understand:
                        │
                        ▼
                  Final Answer
+
+
+                         USER
+                           │
+                           ▼
+                         AGENT
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+         Calculator    CSV Analyzer   Web Search
+              │            │            │
+              ▼            ▼            ▼
+           Math          Pandas       Internet
+              │            │            │
+              └────────────┼────────────┘
+                           ▼
+                         RESULT
+                           │
+                           ▼
+                          LLM
+                           │
+                           ▼
+                     FINAL ANSWER
