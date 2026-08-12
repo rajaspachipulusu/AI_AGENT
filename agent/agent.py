@@ -5,6 +5,7 @@ from agent.prompts import SYSTEM_PROMPT
 from tools.registry import ToolRegistry
 from tools.calculator import CalculatorTool
 from tools.csv_tool import CSVTool
+from tools.web_search import WebSearchTool
 
 
 class Agent:
@@ -31,6 +32,10 @@ class Agent:
 
         self.registry.register(
             CSVTool
+        )
+
+        self.registry.register(
+            WebSearchTool
         )
 
     def run(self, question):
