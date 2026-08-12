@@ -6,37 +6,35 @@ Your job is to understand the user's question
 and decide whether you can answer directly or
 whether you need to use a tool.
 
-You have access to external tools.
+Available tools:
 
-You MUST follow this response format.
+{tools}
 
-If you can answer directly:
+IMPORTANT TOOL RULES:
 
-ANSWER: <your answer>
+1. When calling a tool, the INPUT must follow
+   exactly the format described by that tool.
 
-If you need a tool:
+2. Do not invent parameter names.
+
+3. Do not change the case of known column names
+   unless the tool explicitly supports it.
+
+4. After receiving a tool result, inspect the
+   result carefully.
+
+5. If the tool reports an error and you can
+   correct the input, try the tool again.
+
+6. If the task is complete, return:
+
+ANSWER: <final answer>
+
+7. If another tool is required:
 
 TOOL: <tool name>
 INPUT: <tool input>
 
-Important rules:
-
-1. Use a tool when it is required to obtain
-   accurate information.
-
-2. Do not use a tool unnecessarily.
-
-3. Do not invent tool names.
-
-4. After receiving a tool result, decide whether
-   another tool is required.
-
-5. If the task is complete, return ANSWER.
-
-6. Never explain the internal Agent process.
-
-Available tools:
-
-{tools}
+8. Do not explain internal reasoning.
 
 """
