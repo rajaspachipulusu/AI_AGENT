@@ -101,13 +101,14 @@ class Agent:
             # FINAL ANSWER
             # ----------------------------------
 
-            if response.startswith("ANSWER:"):
+            if "ANSWER:" in response:
 
-                return response.replace(
+                answer = response.split(
                     "ANSWER:",
-                    "",
                     1
-                ).strip()
+                )[1].strip()
+
+                return answer
 
             # ----------------------------------
             # TOOL CALL
@@ -148,14 +149,14 @@ class Agent:
 
                     messages.append(
                         """
-Your tool request did not contain
-a valid tool name.
+    Your tool request did not contain
+    a valid tool name.
 
-Please return:
+    Return:
 
-TOOL: <tool name>
-INPUT: <tool input>
-"""
+    TOOL: <tool name>
+    INPUT: <JSON input>
+    """
                     )
 
                     continue
@@ -164,14 +165,14 @@ INPUT: <tool input>
 
                     messages.append(
                         """
-Your tool request did not contain
-valid tool input.
+    Your tool request did not contain
+    valid tool input.
 
-Please return:
+    Return:
 
-TOOL: <tool name>
-INPUT: <tool input>
-"""
+    TOOL: <tool name>
+    INPUT: <JSON input>
+    """
                     )
 
                     continue
@@ -188,16 +189,16 @@ INPUT: <tool input>
 
                     messages.append(
                         f"""
-The requested tool does not exist:
+    The requested tool does not exist:
 
-{tool_name}
+    {tool_name}
 
-Available tools are:
+    Available tools are:
 
-{self.registry.describe_tools()}
+    {self.registry.describe_tools()}
 
-Choose a valid tool.
-"""
+    Choose a valid tool.
+    """
                     )
 
                     continue
@@ -245,38 +246,51 @@ Choose a valid tool.
 
                 messages.append(
                     f"""
-Tool: {tool_name}
+    Tool: {tool_name}
 
-Input:
-{tool_input}
+    Input:
+    {tool_input}
 
-Tool Result:
-{result}
+    Tool Result:
+    {result}
 
-IMPORTANT:
+    IMPORTANT:
 
-If the tool result has status "success",
-use the returned result to answer the user.
+    You are solving the ORIGINAL user question.
 
-If the tool result has status "error",
-inspect the error message and determine
-whether the tool input can be corrected.
+    If the tool result has status "success":
 
-If you can correct the input,
-call the tool again.
+    Use the result to continue solving
+    the original question.
 
-If the task is complete:
+    If the tool result has status "error":
 
-ANSWER: <final answer>
+    1. Understand the error.
+    2. Do not blindly repeat the same failed
+    tool call with the same input.
+    3. You may correct the input only if the
+    correction is clearly supported by the
+    original user question or the tool result.
+    4. Never silently replace the user's requested
+    column, metric, entity, or condition.
+    5. If the requested information does not exist,
+    provide a clear final answer explaining why.
 
-If another tool is required:
+    Do NOT change the user's question simply
+    to produce an answer.
 
-TOOL: <tool name>
-INPUT: <tool input>
-"""
+    If the task is complete:
+
+    ANSWER: <final answer>
+
+    If another tool is required:
+
+    TOOL: <tool name>
+    INPUT: <JSON input>
+
+    Return ONLY one of these formats.
+    """
                 )
-
-                # Continue Agent Loop
 
                 continue
 
@@ -286,22 +300,19 @@ INPUT: <tool input>
 
             messages.append(
                 """
-Your response format was invalid.
+    Your response format was invalid.
 
-You MUST return exactly one of the
-following formats.
+    You MUST return exactly one of:
 
-For a final answer:
+    ANSWER: <final answer>
 
-ANSWER: <answer>
+    or:
 
-For a tool call:
+    TOOL: <tool name>
+    INPUT: <JSON input>
 
-TOOL: <tool name>
-INPUT: <tool input>
-
-Do not return any other format.
-"""
+    Do not return any other format.
+    """
             )
 
         # ----------------------------------

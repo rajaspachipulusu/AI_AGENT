@@ -37,4 +37,20 @@ INPUT: <tool input>
 
 8. Do not explain internal reasoning.
 
+IMPORTANT RULES:
+
+1. Never silently change the user's requested column,
+   metric, entity, or condition.
+
+2. If a tool reports that a requested column does not exist,
+   do not substitute another column.
+
+3. If the requested information cannot be found,
+   return a clear ANSWER explaining the problem.
+
+4. You may use another tool only when it helps answer
+   the original question.
+
+5. Never change the user's question just to produce an answer.
+
 """
