@@ -5,6 +5,7 @@ class MemoryManager:
         self.max_messages = max_messages
 
         self.messages = []
+        self.facts = []
 
     # ----------------------------------
     # Add Message
@@ -22,12 +23,21 @@ class MemoryManager:
 
     def _trim(self):
 
+        # Nothing to trim
         if len(self.messages) <= self.max_messages:
             return
 
-        self.messages = self.messages[
-            -self.max_messages:
+        # Keep system prompt
+        system_prompt = self.messages[0]
+
+        # Keep latest messages
+        recent_messages = self.messages[
+            -(self.max_messages - 1):
         ]
+
+        self.messages = [
+            system_prompt
+        ] + recent_messages
 
     # ----------------------------------
     # Get Memory
@@ -38,9 +48,68 @@ class MemoryManager:
         return self.messages
 
     # ----------------------------------
-    # Clear Memory
+    # Clear Conversation
     # ----------------------------------
 
     def clear(self):
 
-        self.messages = []
+        if self.messages:
+
+            self.messages = [
+                self.messages[0]
+            ]
+
+        else:
+
+            self.messages = []
+
+        self.facts = []
+
+    # ----------------------------------
+    # Add Important Fact
+    # ----------------------------------
+
+    def add_fact(self, fact):
+
+        if fact not in self.facts:
+
+            self.facts.append(fact)
+        print(f"Added fact: {fact}")
+
+    # ----------------------------------
+    # Get Important Facts
+    # ----------------------------------
+
+    def get_facts(self):
+
+        return self.facts
+
+    # ----------------------------------
+    # Build Memory Context
+    # ----------------------------------
+
+    def get_context(self):
+
+        context = []
+
+        if self.facts:
+
+            context.append(
+                "IMPORTANT FACTS:"
+            )
+
+            for fact in self.facts:
+
+                context.append(
+                    f"- {fact}"
+                )
+
+        context.append(
+            "RECENT CONVERSATION:"
+        )
+
+        context.extend(
+            self.messages
+        )
+
+        return "\n\n".join(context)

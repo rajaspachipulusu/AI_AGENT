@@ -6,6 +6,7 @@ from tools.registry import ToolRegistry
 from tools.calculator import CalculatorTool
 from tools.csv_tool import CSVTool
 from tools.web_search import WebSearchTool
+
 from memory.memory_manager import MemoryManager
 
 
@@ -38,18 +39,23 @@ class Agent:
         self.registry.register(
             WebSearchTool
         )
+
         # ----------------------------------
-        # Conversation Memory
+        # Initialize Conversation Memory
         # ----------------------------------
 
         self.memory = MemoryManager(
             max_messages=12
         )
 
+    # ======================================
+    # RUN AGENT
+    # ======================================
+
     def run(self, question):
 
         # ----------------------------------
-        # Build Tool Description
+        # Build Tool Descriptions
         # ----------------------------------
 
         tool_descriptions = (
@@ -83,12 +89,6 @@ class Agent:
         )
 
         # ----------------------------------
-        # Get Current Conversation
-        # ----------------------------------
-
-        messages = self.memory.get()
-
-        # ----------------------------------
         # Maximum Agent Steps
         # ----------------------------------
 
@@ -106,18 +106,18 @@ class Agent:
             )
 
             # ----------------------------------
-            # Build Prompt
+            # Build Current Prompt
             # ----------------------------------
 
-            prompt = "\n\n".join(
-                     self.memory.get()
-            )
+            prompt = self.memory.get_context()
 
             # ----------------------------------
             # Ask LLM
             # ----------------------------------
 
-            response = self.llm.generate(prompt)
+            response = self.llm.generate(
+                prompt
+            )
 
             print("\nLLM Response:")
             print(response)
@@ -167,37 +167,41 @@ class Agent:
                         ).strip()
 
                 # ----------------------------------
-                # Validate Tool Request
+                # Validate Tool Name
                 # ----------------------------------
 
                 if not tool_name:
 
-                    messages.append(
+                    self.memory.add(
                         """
-    Your tool request did not contain
-    a valid tool name.
+Your tool request did not contain
+a valid tool name.
 
-    Return:
+Return:
 
-    TOOL: <tool name>
-    INPUT: <JSON input>
-    """
+TOOL: <tool name>
+INPUT: <JSON input>
+"""
                     )
 
                     continue
 
+                # ----------------------------------
+                # Validate Tool Input
+                # ----------------------------------
+
                 if not tool_input:
 
-                    messages.append(
+                    self.memory.add(
                         """
-    Your tool request did not contain
-    valid tool input.
+Your tool request did not contain
+valid tool input.
 
-    Return:
+Return:
 
-    TOOL: <tool name>
-    INPUT: <JSON input>
-    """
+TOOL: <tool name>
+INPUT: <JSON input>
+"""
                     )
 
                     continue
@@ -212,18 +216,18 @@ class Agent:
 
                 if tool is None:
 
-                    messages.append(
+                    self.memory.add(
                         f"""
-    The requested tool does not exist:
+The requested tool does not exist:
 
-    {tool_name}
+{tool_name}
 
-    Available tools are:
+Available tools are:
 
-    {self.registry.describe_tools()}
+{self.registry.describe_tools()}
 
-    Choose a valid tool.
-    """
+Choose a valid tool.
+"""
                     )
 
                     continue
@@ -266,122 +270,96 @@ class Agent:
                 )
 
                 # ----------------------------------
-                # Add Tool Observation
+                # Store Successful Tool Result
+                # as an Important Fact
                 # ----------------------------------
 
-    #             messages.append(
-    #                 f"""
-    # Tool: {tool_name}
+                if isinstance(result, dict):
 
-    # Input:
-    # {tool_input}
+                    if result.get("status") == "success":
 
-    # Tool Result:
-    # {result}
+                        self.memory.add_fact(
+                            f"{tool_name}: {result}"
+                        )
 
-    # IMPORTANT:
+                # ----------------------------------
+                # Add Tool Observation to Memory
+                # ----------------------------------
 
-    # You are solving the ORIGINAL user question.
-
-    # If the tool result has status "success":
-
-    # Use the result to continue solving
-    # the original question.
-
-    # If the tool result has status "error":
-
-    # 1. Understand the error.
-    # 2. Do not blindly repeat the same failed
-    # tool call with the same input.
-    # 3. You may correct the input only if the
-    # correction is clearly supported by the
-    # original user question or the tool result.
-    # 4. Never silently replace the user's requested
-    # column, metric, entity, or condition.
-    # 5. If the requested information does not exist,
-    # provide a clear final answer explaining why.
-
-    # Do NOT change the user's question simply
-    # to produce an answer.
-
-    # If the task is complete:
-
-    # ANSWER: <final answer>
-
-    # If another tool is required:
-
-    # TOOL: <tool name>
-    # INPUT: <JSON input>
-
-    # Return ONLY one of these formats.
-    # """
-    #             )
                 self.memory.add(
                     f"""
-                Tool: {tool_name}
+Tool: {tool_name}
 
-                Input:
-                {tool_input}
+Input:
+{tool_input}
 
-                Tool Result:
-                {result}
+Tool Result:
+{result}
 
-                IMPORTANT:
+IMPORTANT:
 
-                You are solving the ORIGINAL user question.
+You are solving the ORIGINAL user question.
 
-                If the tool result has status "success":
+If the tool result has status "success":
 
-                Use the result to continue solving
-                the original question.
+Use the result to continue solving
+the original question.
 
-                If the tool result has status "error":
+If the tool result has status "error":
 
-                1. Understand the error.
-                2. Do not blindly repeat the same failed
-                tool call with the same input.
-                3. You may correct the input only if the
-                correction is clearly supported by the
-                original question or tool result.
-                4. Never silently replace the user's
-                requested column, metric, entity,
-                or condition.
-                5. If the requested information does not
-                exist, provide a clear final answer.
+1. Understand the error.
+2. Do not blindly repeat the same failed
+   tool call with the same input.
+3. You may correct the input only if the
+   correction is clearly supported by the
+   original question or tool result.
+4. Never silently replace the user's
+   requested column, metric, entity,
+   or condition.
+5. If the requested information does not
+   exist, provide a clear final answer.
 
-                If the task is complete:
+Do NOT change the user's question simply
+to produce an answer.
 
-                ANSWER: <final answer>
+If the task is complete:
 
-                If another tool is required:
+ANSWER: <final answer>
 
-                TOOL: <tool name>
-                INPUT: <JSON input>
+If another tool is required:
 
-                Return ONLY one of these formats.
-                """
+TOOL: <tool name>
+INPUT: <JSON input>
+
+Return ONLY one of these formats.
+"""
                 )
+
+                # ----------------------------------
+                # Continue Agent Loop
+                # ----------------------------------
+
                 continue
 
             # ----------------------------------
             # INVALID LLM RESPONSE
             # ----------------------------------
 
-            messages.append(
+            self.memory.add(
                 """
-    Your response format was invalid.
+Your response format was invalid.
 
-    You MUST return exactly one of:
+You MUST return exactly one of:
 
-    ANSWER: <final answer>
+ANSWER: <final answer>
 
-    or:
+or:
 
-    TOOL: <tool name>
-    INPUT: <JSON input>
+TOOL: <tool name>
+INPUT: <JSON input>
 
-    Do not return any other format.
-    """
+Do not return any other format.
+"""
             )
 
         # ----------------------------------
@@ -393,3 +371,35 @@ class Agent:
             "number of steps without producing "
             "a final answer."
         )
+
+
+#                          USER
+#                            │
+#                            ▼
+#                         AGENT
+#                            │
+#               ┌────────────┴────────────┐
+#               │                         │
+#               ▼                         ▼
+#            MEMORY                     TOOLS
+#               │                  ┌──────┼──────┐
+#        ┌──────┴──────┐           │      │      │
+#        │             │          CSV    Calc    Web
+#    Recent          Facts
+#   Messages
+#        │             │
+#        └──────┬──────┘
+#               │
+#               ▼
+#              LLM
+#               │
+#        ┌──────┴──────┐
+#        │             │
+#       TOOL         ANSWER
+#        │
+#        ▼
+#    Tool Result
+#        │
+#        ├── Recent Memory
+#        │
+#        └── Important Fact
