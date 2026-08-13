@@ -6,6 +6,7 @@ from tools.registry import ToolRegistry
 from tools.calculator import CalculatorTool
 from tools.csv_tool import CSVTool
 from tools.web_search import WebSearchTool
+from memory.memory_manager import MemoryManager
 
 
 class Agent:
@@ -37,6 +38,13 @@ class Agent:
         self.registry.register(
             WebSearchTool
         )
+        # ----------------------------------
+        # Conversation Memory
+        # ----------------------------------
+
+        self.memory = MemoryManager(
+            max_messages=12
+        )
 
     def run(self, question):
 
@@ -57,13 +65,28 @@ class Agent:
         )
 
         # ----------------------------------
-        # Agent Messages / State
+        # Initialize Memory
         # ----------------------------------
 
-        messages = [
-            system_prompt,
+        if not self.memory.get():
+
+            self.memory.add(
+                system_prompt
+            )
+
+        # ----------------------------------
+        # Add User Question
+        # ----------------------------------
+
+        self.memory.add(
             f"User question:\n{question}"
-        ]
+        )
+
+        # ----------------------------------
+        # Get Current Conversation
+        # ----------------------------------
+
+        messages = self.memory.get()
 
         # ----------------------------------
         # Maximum Agent Steps
@@ -86,7 +109,9 @@ class Agent:
             # Build Prompt
             # ----------------------------------
 
-            prompt = "\n\n".join(messages)
+            prompt = "\n\n".join(
+                     self.memory.get()
+            )
 
             # ----------------------------------
             # Ask LLM
@@ -244,54 +269,98 @@ class Agent:
                 # Add Tool Observation
                 # ----------------------------------
 
-                messages.append(
+    #             messages.append(
+    #                 f"""
+    # Tool: {tool_name}
+
+    # Input:
+    # {tool_input}
+
+    # Tool Result:
+    # {result}
+
+    # IMPORTANT:
+
+    # You are solving the ORIGINAL user question.
+
+    # If the tool result has status "success":
+
+    # Use the result to continue solving
+    # the original question.
+
+    # If the tool result has status "error":
+
+    # 1. Understand the error.
+    # 2. Do not blindly repeat the same failed
+    # tool call with the same input.
+    # 3. You may correct the input only if the
+    # correction is clearly supported by the
+    # original user question or the tool result.
+    # 4. Never silently replace the user's requested
+    # column, metric, entity, or condition.
+    # 5. If the requested information does not exist,
+    # provide a clear final answer explaining why.
+
+    # Do NOT change the user's question simply
+    # to produce an answer.
+
+    # If the task is complete:
+
+    # ANSWER: <final answer>
+
+    # If another tool is required:
+
+    # TOOL: <tool name>
+    # INPUT: <JSON input>
+
+    # Return ONLY one of these formats.
+    # """
+    #             )
+                self.memory.add(
                     f"""
-    Tool: {tool_name}
+                Tool: {tool_name}
 
-    Input:
-    {tool_input}
+                Input:
+                {tool_input}
 
-    Tool Result:
-    {result}
+                Tool Result:
+                {result}
 
-    IMPORTANT:
+                IMPORTANT:
 
-    You are solving the ORIGINAL user question.
+                You are solving the ORIGINAL user question.
 
-    If the tool result has status "success":
+                If the tool result has status "success":
 
-    Use the result to continue solving
-    the original question.
+                Use the result to continue solving
+                the original question.
 
-    If the tool result has status "error":
+                If the tool result has status "error":
 
-    1. Understand the error.
-    2. Do not blindly repeat the same failed
-    tool call with the same input.
-    3. You may correct the input only if the
-    correction is clearly supported by the
-    original user question or the tool result.
-    4. Never silently replace the user's requested
-    column, metric, entity, or condition.
-    5. If the requested information does not exist,
-    provide a clear final answer explaining why.
+                1. Understand the error.
+                2. Do not blindly repeat the same failed
+                tool call with the same input.
+                3. You may correct the input only if the
+                correction is clearly supported by the
+                original question or tool result.
+                4. Never silently replace the user's
+                requested column, metric, entity,
+                or condition.
+                5. If the requested information does not
+                exist, provide a clear final answer.
 
-    Do NOT change the user's question simply
-    to produce an answer.
+                If the task is complete:
 
-    If the task is complete:
+                ANSWER: <final answer>
 
-    ANSWER: <final answer>
+                If another tool is required:
 
-    If another tool is required:
+                TOOL: <tool name>
+                INPUT: <JSON input>
 
-    TOOL: <tool name>
-    INPUT: <JSON input>
-
-    Return ONLY one of these formats.
-    """
+                Return ONLY one of these formats.
+                """
                 )
-
                 continue
 
             # ----------------------------------
